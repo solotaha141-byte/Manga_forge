@@ -14,4 +14,4 @@ app.post('/api/favorites/:id',auth,(req,res)=>{let x=db.prepare('SELECT 1 FROM f
 app.post('/api/mangas',auth,admin,(req,res)=>{try{let x=db.prepare('INSERT INTO mangas(title,genre,description) VALUES(?,?,?)').run(req.body.title,req.body.genre||'',req.body.description||'');res.json({id:x.lastInsertRowid})}catch(e){res.status(400).json({error:'عنوان تکراری است'})}});
 app.post('/api/chapters',auth,admin,(req,res)=>{let x=db.prepare('INSERT INTO chapters(manga_id,title,number,content) VALUES(?,?,?,?)').run(req.body.manga_id,req.body.title,req.body.number,req.body.content);res.json({id:x.lastInsertRowid})});
 const upload=multer({dest:path.join(__dirname,'public/uploads')});app.post('/api/upload',auth,admin,upload.single('file'),(req,res)=>res.json({url:'/uploads/'+req.file.filename}));
-app.listen(process.env.PORT||3000,()=>console.log('MANGA FORGE running on http://localhost:'+(process.env.PORT||3000)));
+app.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("MANGA FORGE is running"));
