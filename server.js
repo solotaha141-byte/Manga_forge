@@ -1,17 +1,42 @@
-const express=require('express'),path=require('path'),jwt=require('jsonwebtoken'),bcrypt=require('bcryptjs'),Database=require('better-sqlite3'),multer=require('multer');
-const app=express(),db=new Database('manga-forge.db'),SECRET=process.env.JWT_SECRET||'CHANGE_THIS_SECRET';
-app.use(express.json());app.use(express.urlencoded({extended:true}));app.use(express.static(path.join(__dirname,'public')));
-db.exec(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,email TEXT UNIQUE,password TEXT,role TEXT DEFAULT 'user');CREATE TABLE IF NOT EXISTS mangas(id INTEGER PRIMARY KEY AUTOINCREMENT,title TEXT UNIQUE,genre TEXT,description TEXT);CREATE TABLE IF NOT EXISTS chapters(id INTEGER PRIMARY KEY AUTOINCREMENT,manga_id INTEGER,title TEXT,number INTEGER,content TEXT);CREATE TABLE IF NOT EXISTS favorites(user_id INTEGER,manga_id INTEGER,PRIMARY KEY(user_id,manga_id));`);
-if(db.prepare('SELECT COUNT(*) c FROM mangas').get().c===0){let i=db.prepare('INSERT INTO mangas(title,genre,description) VALUES(?,?,?)');['Shadow Reign|اکشن • فانتزی','The Last Hunter|اکشن','Moonlit Blade|ماجراجویی'].forEach(x=>{let [t,g]=x.split('|');i.run(t,g,'اثر نمونه برای تست سایت')});for(const m of db.prepare('SELECT id FROM mangas').all())db.prepare('INSERT INTO chapters(manga_id,title,number,content) VALUES(?,?,?,?)').run(m.id,'فصل اول',1,'این محتوای نمونه است. آثار واقعی را فقط با مجوز صاحب اثر منتشر کنید.');}
-function auth(req,res,next){try{req.user=jwt.verify((req.headers.authorization||'').replace('Bearer ',''),SECRET);next()}catch(e){res.status(401).json({error:'نیاز به ورود دارید'})}}function admin(req,res,next){if(req.user.role!=='admin')return res.status(403).json({error:'دسترسی مدیر لازم است'});next()}
-app.post('/api/register',async(req,res)=>{try{let {name,email,password}=req.body;if(!name||!email||!password)return res.status(400).json({error:'همه فیلدها الزامی است'});let h=await bcrypt.hash(password,10),x=db.prepare('INSERT INTO users(name,email,password) VALUES(?,?,?)').run(name,email,h),u={id:x.lastInsertRowid,name,email,role:'user'};res.json({token:jwt.sign(u,SECRET,{expiresIn:'7d'}),user:u})}catch(e){res.status(400).json({error:'ایمیل یا نام کاربری تکراری است'})}});
-app.post('/api/login',async(req,res)=>{let u=db.prepare('SELECT * FROM users WHERE email=?').get(req.body.email);if(!u||!(await bcrypt.compare(req.body.password,u.password)))return res.status(401).json({error:'اطلاعات ورود نادرست است'});let user={id:u.id,name:u.name,email:u.email,role:u.role};res.json({token:jwt.sign(user,SECRET,{expiresIn:'7d'}),user})});
-app.get('/api/me',auth,(req,res)=>res.json(req.user));app.get('/api/mangas',(req,res)=>res.json(db.prepare('SELECT * FROM mangas ORDER BY id DESC').all()));
-app.get('/api/mangas/:id',(req,res)=>{let m=db.prepare('SELECT * FROM mangas WHERE id=?').get(req.params.id);if(!m)return res.status(404).json({error:'یافت نشد'});m.chapters=db.prepare('SELECT id,title,number FROM chapters WHERE manga_id=? ORDER BY number').all(m.id);res.json(m)});
-app.get('/api/chapters/:id',(req,res)=>{let c=db.prepare('SELECT * FROM chapters WHERE id=?').get(req.params.id);c?res.json(c):res.status(404).json({error:'فصل یافت نشد'})});
-app.get('/api/favorites',auth,(req,res)=>res.json(db.prepare('SELECT m.* FROM mangas m JOIN favorites f ON f.manga_id=m.id WHERE f.user_id=?').all(req.user.id)));
-app.post('/api/favorites/:id',auth,(req,res)=>{let x=db.prepare('SELECT 1 FROM favorites WHERE user_id=? AND manga_id=?').get(req.user.id,req.params.id);x?db.prepare('DELETE FROM favorites WHERE user_id=? AND manga_id=?').run(req.user.id,req.params.id):db.prepare('INSERT INTO favorites VALUES(?,?)').run(req.user.id,req.params.id);res.json({ok:true})});
-app.post('/api/mangas',auth,admin,(req,res)=>{try{let x=db.prepare('INSERT INTO mangas(title,genre,description) VALUES(?,?,?)').run(req.body.title,req.body.genre||'',req.body.description||'');res.json({id:x.lastInsertRowid})}catch(e){res.status(400).json({error:'عنوان تکراری است'})}});
-app.post('/api/chapters',auth,admin,(req,res)=>{let x=db.prepare('INSERT INTO chapters(manga_id,title,number,content) VALUES(?,?,?,?)').run(req.body.manga_id,req.body.title,req.body.number,req.body.content);res.json({id:x.lastInsertRowid})});
-const upload=multer({dest:path.join(__dirname,'public/uploads')});app.post('/api/upload',auth,admin,upload.single('file'),(req,res)=>res.json({url:'/uploads/'+req.file.filename}));
-app.listen(process.env.PORT || 3000, "0.0.0.0", () => console.log("MANGA FORGE is running"));
+return res.status(400).json({
+      error: 'خطا در آپلود فایل'
+    });
+
+  }
+
+  res.status(500).json({
+    error: 'خطای داخلی سرور'
+  });
+
+});
+
+// =========================
+// UNKNOWN API ROUTE
+// =========================
+
+app.use(
+  '/api',
+  (req, res) => {
+
+    res.status(404).json({
+      error: 'API route not found'
+    });
+
+  }
+);
+
+// =========================
+// START SERVER
+// =========================
+
+app.listen(
+  PORT,
+  '0.0.0.0',
+  () => {
+
+    console.log(
+      MANGA FORGE is running on port ${PORT}
+    );
+
+  }
+);
